@@ -1,22 +1,28 @@
 import machinelearning as ml
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def main():
     sig = ml.Sigmoid()
     nn = ml.NeuralNet([1, 5, 1], sig, ml.SquaredError())
     rng = np.random.default_rng()
-    xs = [2*rng.random((1, 1)) - 1 for _ in range(200)]
-    ys = [x**2 for x in xs]
-    for i in range(200):
-        nn.feedforward(xs[i])
-        nn.get_cost(ys[i])
-    tnum = 5
-    #test = [nn.feedforward(np.array([[-1 + dx]])) for dx in range(0, 2, 2/tnum)]
-    xtest = np.linspace(-1.0, 1.0, tnum)
-    print(xtest)
-    ytest = [nn.feedforward(np.reshape(x, (1, 1))) for x in xtest]
-    print(ytest)
+    n = 200
+    xs = rng.uniform(-1, 1, n)
+    ys = 2*xs**2 + 1
+    epochs = 8000
+    for _ in range(epochs):
+        for x, y in zip(xs, ys):
+            nn.feedforward(x)
+            nn.backprop(y)
+    tnum = 100
+    xtest = np.linspace(-1, 1, tnum)
+    ytest = np.array([nn.feedforward(x)[0] for x in xtest])
+    yp = 2*xtest**2 + 1
+    plt.plot(xtest, yp, "r", label="y=f(x)")
+    plt.scatter(xtest, ytest, marker=".", label="Model")
+    plt.legend()
+    plt.show()
 
 
 if __name__ == "__main__":

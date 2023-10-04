@@ -22,6 +22,15 @@ class Sigmoid(IActivationFunction):
         return np.multiply(self.eval(x), 1 - self.eval(x))
 
 
+class Identity(IActivationFunction):
+
+    def eval(self, x):
+        return x
+
+    def derivative_at(self, x):
+        return np.ones(x.shape)
+
+
 # Interface for cost function
 class ICost:
 
@@ -35,15 +44,11 @@ class ICost:
 # Implementation of ICost
 class SquaredError(ICost):
 
-    def cost(self, actuals, expecteds):
-        sum = 0
-        for (actual, expected) in zip(actuals, expecteds):
-            sum += (actual - expected)**2
-        return 0.5*sum
+    def cost(self, actual, expected):
+        return 0.5*np.sum(np.multiply(actual - expected, actual - expected))
 
-    def derivative(self, actuals, expecteds):
-        derivatives = [a - e for (a, e) in zip(actuals, expecteds)]
-        return np.array(derivatives)
+    def derivative(self, actual, expected):
+        return actual - expected
 
 
 # Class for tracking weights and biases information
@@ -55,26 +60,27 @@ class SquaredError(ICost):
 # Make sure activation function applies componentwise to vectors
 class Synapse:
 
-    def __init__(self, numIn, numOut, activation):
+    def __init__(self, numIn, numOut, activation, stepSize):
         self.numIn = numIn
         self.numOut = numOut
+        self.stepSize = stepSize
         self.activation = activation
-        # probably need to change this to be centered at 0
         rng = np.random.default_rng()
-        self.weights = 2*rng.random((numOut, numIn)) - 1
-        self.biases = rng.random((numOut, 1))
+        self.weights = rng.normal(0, 5, size=(numOut, numIn))
+        self.biases = -1*np.ones((numOut, 1))
 
     def feedforward(self, x):
-        self.x = x
-        self.z = np.matmul(self.weights, x) + self.biases
+        self.x = x.reshape(self.numIn, 1)
+        self.z = self.weights@self.x + self.biases
         return self.activation.eval(self.z)
 
     def backprop(self, dActivations):
+        dActivations = dActivations.reshape(self.numOut, 1)
         dz = np.multiply(self.activation.derivative_at(self.z), dActivations)
-        dWeights = np.matmul(dz, self.x)
-        self.weights -= dWeights
-        self.biases -= dz
-        return np.matmul(dWeights.transpose(), dz)
+        dWeights = dz@self.x.transpose()
+        self.weights -= self.stepSize*dWeights
+        self.biases -= self.stepSize*dz
+        return dWeights.transpose()@dz
 
 
 # Class for neural network
@@ -82,10 +88,12 @@ class NeuralNet:
 
     def __init__(self, neuralLayers, activation, cost):
         self.synapses = []
-        for i in range(1, len(neuralLayers)):
-            prevLayer = neuralLayers[i - 1]
-            thisLayer = neuralLayers[i]
-            self.synapses.append(Synapse(prevLayer, thisLayer, Sigmoid()))
+        self.numOut = neuralLayers[-1]
+        for i in range(len(neuralLayers) - 2):
+            prevLayer = neuralLayers[i]
+            thisLayer = neuralLayers[i + 1]
+            self.synapses.append(Synapse(prevLayer, thisLayer, Sigmoid(), 0.01))
+        self.synapses.append(Synapse(neuralLayers[-2], neuralLayers[-1], Identity(), 0.01))
         self.cost = cost
 
     def feedforward(self, x):
@@ -96,9 +104,10 @@ class NeuralNet:
         return a[-1]
 
     def get_cost(self, expecteds):
+        expecteds = expecteds.reshape(self.numOut, 1)
         return self.cost.cost(self.output, expecteds)
 
-    def backprop(self, dActivations):
-        a = [dActivations]
-        for s in self.synapses:
+    def backprop(self, expecteds):
+        a = [self.cost.derivative(self.output, expecteds)]
+        for s in reversed(self.synapses):
             a.append(s.backprop(a[-1]))
