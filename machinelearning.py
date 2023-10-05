@@ -1,34 +1,72 @@
+import abc
 import numpy as np
 
 
 # Interface for activation functions
 # eval must be able to apply componentwise to vector x
-class IActivationFunction:
+class ISynapse(metaclass=abc.ABCMeta):
 
-    def eval(self, x):
-        pass
+    @classmethod
+    def __subclasshook__(cls, subclass):
+        return (hasattr(subclass, 'feedforward') and
+                callable(subclass.feedforward) and
+                hasattr(subclass, 'backprop') and
+                callable(subclass.backprop) or
+                NotImplemented)
 
-    def derivative_at(self, x):
-        pass
+    @abc.abstractmethod
+    def feedforward(self, x):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def backprop(self, dy):
+        raise NotImplementedError
 
 
 # Class for sigmoid implementation of activation function
-class Sigmoid(IActivationFunction):
+class Sigmoid(ISynapse):
 
-    def eval(self, x):
-        return 1 / (1 + np.exp(-x))
+    def feedforward(self, x):
+        self.z = 1 / (1 + np.exp(-x))
+        return self.z
 
-    def derivative_at(self, x):
-        return np.multiply(self.eval(x), 1 - self.eval(x))
+    def backprop(self, dy):
+        dz = np.multiply(self.z, 1 - self.z)
+        return np.multiply(dz, dy)
 
 
-class Identity(IActivationFunction):
+class Identity(ISynapse):
 
-    def eval(self, x):
+    def feedforward(self, x):
         return x
 
-    def derivative_at(self, x):
-        return np.ones(x.shape)
+    def backprop(self, dy):
+        return dy
+
+
+# Class for tracking weights and biases information
+# We need to store numOut x numIn weights and numOut biases
+# Maybe have a set_error method and default error is 0
+# Initialize weights and biases rando
+# Store weights in a matrix. Maybe include bias
+# Consider injectingn dependency for weight and bias initialization
+# Make sure activation function applies componentwise to vectors
+class LinearSynapse(ISynapse):
+
+    def __init__(self, weights, biases, stepSize):
+        self.weights = weights
+        self.biases = biases
+        self.stepSize = stepSize
+
+    def feedforward(self, x):
+        self.x = x
+        return self.weights@self.x + self.biases
+
+    def backprop(self, dy):
+        dWeights = dy@self.x.transpose()
+        self.weights -= self.stepSize*dWeights
+        self.biases -= self.stepSize*dy
+        return dWeights.transpose()@dy
 
 
 # Interface for cost function
@@ -51,63 +89,28 @@ class SquaredError(ICost):
         return actual - expected
 
 
-# Class for tracking weights and biases information
-# We need to store numOut x numIn weights and numOut biases
-# Maybe have a set_error method and default error is 0
-# Initialize weights and biases rando
-# Store weights in a matrix. Maybe include bias
-# Consider injectingn dependency for weight and bias initialization
-# Make sure activation function applies componentwise to vectors
-class Synapse:
-
-    def __init__(self, numIn, numOut, activation, stepSize):
-        self.numIn = numIn
-        self.numOut = numOut
-        self.stepSize = stepSize
-        self.activation = activation
-        rng = np.random.default_rng()
-        self.weights = rng.normal(0, 5, size=(numOut, numIn))
-        self.biases = -1*np.ones((numOut, 1))
-
-    def feedforward(self, x):
-        self.x = x.reshape(self.numIn, 1)
-        self.z = self.weights@self.x + self.biases
-        return self.activation.eval(self.z)
-
-    def backprop(self, dActivations):
-        dActivations = dActivations.reshape(self.numOut, 1)
-        dz = np.multiply(self.activation.derivative_at(self.z), dActivations)
-        dWeights = dz@self.x.transpose()
-        self.weights -= self.stepSize*dWeights
-        self.biases -= self.stepSize*dz
-        return dWeights.transpose()@dz
-
-
 # Class for neural network
 class NeuralNet:
 
-    def __init__(self, neuralLayers, activation, cost):
+    def __init__(self, neuralLayers, activations, cost, stepSize):
         self.synapses = []
-        self.numOut = neuralLayers[-1]
-        for i in range(len(neuralLayers) - 2):
-            prevLayer = neuralLayers[i]
-            thisLayer = neuralLayers[i + 1]
-            self.synapses.append(Synapse(prevLayer, thisLayer, Sigmoid(), 0.01))
-        self.synapses.append(Synapse(neuralLayers[-2], neuralLayers[-1], Identity(), 0.01))
+        rng = np.random.default_rng()
+        for x, y in zip(neuralLayers, neuralLayers[1:]):
+            weights = rng.normal(0, 10, size=(y, x))
+            biases = -1*np.ones((y, 1))
+            self.synapses.append(LinearSynapse(weights, biases, stepSize))
+            if activations:
+                self.synapses.append(activations.pop(0))
         self.cost = cost
 
     def feedforward(self, x):
-        a = [x]
         for s in self.synapses:
-            a.append(s.feedforward(a[-1]))
-        self.output = a[-1]
-        return a[-1]
+            x = s.feedforward(x)
+        self.output = x
+        return self.output
 
-    def get_cost(self, expecteds):
-        expecteds = expecteds.reshape(self.numOut, 1)
-        return self.cost.cost(self.output, expecteds)
 
     def backprop(self, expecteds):
-        a = [self.cost.derivative(self.output, expecteds)]
+        dy = self.cost.derivative(self.output, expecteds)
         for s in reversed(self.synapses):
-            a.append(s.backprop(a[-1]))
+            dy = s.backprop(dy)

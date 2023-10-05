@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 def main():
     sig = ml.Sigmoid()
-    nn = ml.NeuralNet([1, 5, 1], sig, ml.SquaredError())
+    nn = ml.NeuralNet([1, 5, 1], [sig], ml.SquaredError(), 0.1)
     rng = np.random.default_rng()
     n = 200
     xs = rng.uniform(-1, 1, n)
@@ -13,11 +13,11 @@ def main():
     epochs = 8000
     for _ in range(epochs):
         for x, y in zip(xs, ys):
-            nn.feedforward(x)
-            nn.backprop(y)
+            nn.feedforward(np.array([[x]]))
+            nn.backprop(np.array([[y]]))
     tnum = 100
     xtest = np.linspace(-1, 1, tnum)
-    ytest = np.array([nn.feedforward(x)[0] for x in xtest])
+    ytest = np.array([nn.feedforward(np.array([[x]]))[0] for x in xtest])
     yp = 2*xtest**2 + 1
     plt.plot(xtest, yp, "r", label="y=f(x)")
     plt.scatter(xtest, ytest, marker=".", label="Model")
