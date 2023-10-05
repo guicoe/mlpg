@@ -2,8 +2,41 @@ import abc
 import numpy as np
 
 
-# Interface for activation functions
-# eval must be able to apply componentwise to vector x
+class IInitializer(metaclass=abc.ABCMeta):
+
+    @classmethod
+    def __subclasshook__(cls, subclass):
+        return (hasattr(subclass, 'initialize') and
+                callable(subclass.initialize) or
+                NotImplemented)
+
+    @abc.abstractmethod
+    def initialize(self, size):
+        raise NotImplementedError
+
+
+class Normal(IInitializer):
+
+    def __init__(self, mu, sigma):
+        self.mu = mu
+        self.sigma = sigma
+
+    def initialize(self, size):
+        rng = np.random.default_rng()
+        return rng.normal(self.mu, self.sigma, size=size)
+
+
+class Uniform(IInitializer):
+
+    def __init__(self, min, max):
+        self.min = min
+        self.max = max
+
+    def initialize(self, size):
+        rng = np.random.default_rng()
+        return rng.uniform(self.min, self.max, size=size)
+
+        
 class ISynapse(metaclass=abc.ABCMeta):
 
     @classmethod
@@ -44,13 +77,6 @@ class Identity(ISynapse):
         return dy
 
 
-# Class for tracking weights and biases information
-# We need to store numOut x numIn weights and numOut biases
-# Maybe have a set_error method and default error is 0
-# Initialize weights and biases rando
-# Store weights in a matrix. Maybe include bias
-# Consider injectingn dependency for weight and bias initialization
-# Make sure activation function applies componentwise to vectors
 class LinearSynapse(ISynapse):
 
     def __init__(self, weights, biases, stepSize):
@@ -69,7 +95,6 @@ class LinearSynapse(ISynapse):
         return dWeights.transpose()@dy
 
 
-# Interface for cost function
 class ICost:
 
     def cost(self, actuals, expecteds):
@@ -79,7 +104,6 @@ class ICost:
         pass
 
 
-# Implementation of ICost
 class SquaredError(ICost):
 
     def cost(self, actual, expected):
@@ -89,26 +113,38 @@ class SquaredError(ICost):
         return actual - expected
 
 
-# Class for neural network
 class NeuralNet:
 
-    def __init__(self, neuralLayers, activations, cost, stepSize):
+    def __init__(self, neuralLayers, activations, initializer, cost, stepSize):
+        self.build_synapses(neuralLayers, activations, initializer, stepSize)
+        self.cost = cost
+
+    def build_synapses(self, neuralLayers, activations, initializer, stepSize):
         self.synapses = []
-        rng = np.random.default_rng()
-        for x, y in zip(neuralLayers, neuralLayers[1:]):
-            weights = rng.normal(0, 10, size=(y, x))
-            biases = -1*np.ones((y, 1))
+        for n, m in zip(neuralLayers, neuralLayers[1:]):
+            weights = initializer.initialize((m, n))
+            biases = 1*np.ones((m, 1))
             self.synapses.append(LinearSynapse(weights, biases, stepSize))
             if activations:
                 self.synapses.append(activations.pop(0))
-        self.cost = cost
+
+    def cycle(self, x, y):
+        self.feedforward(x)
+        self.backprop(y)
+
+    def train_epoch(self, training_set):
+        for x, y in training_set:
+            self.cycle(x, y)
+
+    def train(self, training_set, epochs):
+        for _ in range(epochs):
+            self.train_epoch(training_set)
 
     def feedforward(self, x):
         for s in self.synapses:
             x = s.feedforward(x)
         self.output = x
         return self.output
-
 
     def backprop(self, expecteds):
         dy = self.cost.derivative(self.output, expecteds)

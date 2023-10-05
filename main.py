@@ -4,17 +4,18 @@ import matplotlib.pyplot as plt
 
 
 def main():
+    nl = [1, 5, 1]
     sig = ml.Sigmoid()
-    nn = ml.NeuralNet([1, 5, 1], [sig], ml.SquaredError(), 0.1)
-    rng = np.random.default_rng()
+    uniform = ml.Normal(0, 2)
+    cost = ml.SquaredError()
+    lr = 0.1
     n = 200
-    xs = rng.uniform(-1, 1, n)
-    ys = 2*xs**2 + 1
     epochs = 8000
-    for _ in range(epochs):
-        for x, y in zip(xs, ys):
-            nn.feedforward(np.array([[x]]))
-            nn.backprop(np.array([[y]]))
+    nn = ml.NeuralNet(nl, [sig], uniform, cost, lr)
+    rng = np.random.default_rng()
+    xs = rng.uniform(-1, 1, n)
+    training_set = [(np.array([[x]]), np.array([[2*x**2+1]])) for x in xs]
+    nn.train(training_set, epochs)
     tnum = 100
     xtest = np.linspace(-1, 1, tnum)
     ytest = np.array([nn.feedforward(np.array([[x]]))[0] for x in xtest])
