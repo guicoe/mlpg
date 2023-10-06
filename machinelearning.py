@@ -69,9 +69,13 @@ class LinearSynapse(ISynapse):
 
     def backprop(self, dy):
         dWeights = dy@self.x.transpose()
+        result = self.weights.transpose()@dy
+        self.update(dWeights, dy)
+        return result
+
+    def update(self, dWeights, dBiases):
         self.weights -= self.stepSize*dWeights
-        self.biases -= self.stepSize*dy
-        return dWeights.transpose()@dy
+        self.biases -= self.stepSize*dBiases
 
 
 class IActivation(ISynapse):

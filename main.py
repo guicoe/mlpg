@@ -10,7 +10,7 @@ def main():
     cost = ml.SquaredError()
     lr = 0.1
     n = 200
-    epochs = 8000
+    epochs = 50
     nn = ml.NeuralNet(nl, [sig], uniform, cost, lr)
     rng = np.random.default_rng()
     xs = rng.uniform(-1, 1, n)
