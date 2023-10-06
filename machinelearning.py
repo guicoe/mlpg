@@ -3,7 +3,7 @@ import numpy as np
 
 
 class IInitializer(metaclass=abc.ABCMeta):
-
+    '''Interface for matrix initializers'''
     @classmethod
     def __subclasshook__(cls, subclass):
         return (hasattr(subclass, 'initialize') and
@@ -16,7 +16,7 @@ class IInitializer(metaclass=abc.ABCMeta):
 
 
 class Normal(IInitializer):
-
+    '''Implemnentation of IInitializer interface using normal distribution'''
     def __init__(self, mu, sigma):
         self.mu = mu
         self.sigma = sigma
@@ -27,7 +27,7 @@ class Normal(IInitializer):
 
 
 class Uniform(IInitializer):
-
+    '''Implementation of IInitializer interface using uniform distribution'''
     def __init__(self, min, max):
         self.min = min
         self.max = max
@@ -38,7 +38,7 @@ class Uniform(IInitializer):
 
         
 class ISynapse(metaclass=abc.ABCMeta):
-
+    '''Interface for neural network components'''
     @classmethod
     def __subclasshook__(cls, subclass):
         return (hasattr(subclass, 'feedforward') and
@@ -56,29 +56,8 @@ class ISynapse(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
 
-# Class for sigmoid implementation of activation function
-class Sigmoid(ISynapse):
-
-    def feedforward(self, x):
-        self.z = 1 / (1 + np.exp(-x))
-        return self.z
-
-    def backprop(self, dy):
-        dz = np.multiply(self.z, 1 - self.z)
-        return np.multiply(dz, dy)
-
-
-class Identity(ISynapse):
-
-    def feedforward(self, x):
-        return x
-
-    def backprop(self, dy):
-        return dy
-
-
 class LinearSynapse(ISynapse):
-
+    '''Main neural network synapse which uses weights and biases'''
     def __init__(self, weights, biases, stepSize):
         self.weights = weights
         self.biases = biases
@@ -95,31 +74,78 @@ class LinearSynapse(ISynapse):
         return dWeights.transpose()@dy
 
 
-class ICost:
-
-    def cost(self, actuals, expecteds):
-        pass
-
-    def derivative(self, actuals, expecteds):
-        pass
+class IActivation(ISynapse):
+    '''Interface for activation function synapses'''
+    pass
 
 
-class SquaredError(ICost):
+# Class for sigmoid implementation of activation function
+class Sigmoid(IActivation):
+    '''Non-linear synapse for neural network'''
+    def feedforward(self, x):
+        self.z = 1 / (1 + np.exp(-x))
+        return self.z
 
+    def backprop(self, dy):
+        dz = np.multiply(self.z, 1 - self.z)
+        return np.multiply(dz, dy)
+
+
+class Identity(IActivation):
+    '''Trivial activation function'''
+    def feedforward(self, x):
+        return x
+
+    def backprop(self, dy):
+        return dy
+
+
+class ICostFunction(metaclass=abc.ABCMeta):
+    '''Interface for neural network cost function'''
+    @classmethod
+    def __subclasshook__(cls, subclass):
+        return (hasattr(subclass, 'cost') and
+                callable(subclass.cost) and
+                hasattr(subclass, 'derivative') and
+                callable(subclass.derivative) or
+                NotImplemented)
+
+    @abc.abstractmethod
     def cost(self, actual, expected):
-        return 0.5*np.sum(np.multiply(actual - expected, actual - expected))
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def derivative(self, actual, expected):
+        raise NotImplementedError
+
+
+class SquaredError(ICostFunction):
+    '''Squared error implementation of ICostFunction interface'''
+    def cost(self, actual, expected):
+        return 0.5*np.sum((actual - expected)**2)
 
     def derivative(self, actual, expected):
         return actual - expected
 
 
 class NeuralNet:
-
-    def __init__(self, neuralLayers, activations, initializer, cost, stepSize):
+    '''Class for building, training, and using neural network models'''
+    def __init__(
+            self,
+            neuralLayers: list[int],
+            activations: list[IActivation],
+            initializer: IInitializer,
+            cost: ICostFunction,
+            stepSize: float):
         self.build_synapses(neuralLayers, activations, initializer, stepSize)
         self.cost = cost
 
-    def build_synapses(self, neuralLayers, activations, initializer, stepSize):
+    def build_synapses(
+            self,
+            neuralLayers: list[int],
+            activations: list[IActivation],
+            initializer: IInitializer,
+            stepSize: float):
         self.synapses = []
         for n, m in zip(neuralLayers, neuralLayers[1:]):
             weights = initializer.initialize((m, n))
@@ -146,7 +172,7 @@ class NeuralNet:
         self.output = x
         return self.output
 
-    def backprop(self, expecteds):
-        dy = self.cost.derivative(self.output, expecteds)
+    def backprop(self, expected):
+        dy = self.cost.derivative(self.output, expected)
         for s in reversed(self.synapses):
             dy = s.backprop(dy)
