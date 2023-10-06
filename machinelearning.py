@@ -3,7 +3,9 @@ import numpy as np
 
 
 class IInitializer(metaclass=abc.ABCMeta):
-    '''Interface for matrix initializers'''
+    """
+    Interface for matrix initializers
+    """
     @classmethod
     def __subclasshook__(cls, subclass):
         return (hasattr(subclass, 'initialize') and
@@ -16,7 +18,9 @@ class IInitializer(metaclass=abc.ABCMeta):
 
 
 class Normal(IInitializer):
-    '''Implemnentation of IInitializer interface using normal distribution'''
+    """
+    Implemnentation of IInitializer interface using normal distribution
+    """
     def __init__(self, mu, sigma):
         self.mu = mu
         self.sigma = sigma
@@ -27,7 +31,9 @@ class Normal(IInitializer):
 
 
 class Uniform(IInitializer):
-    '''Implementation of IInitializer interface using uniform distribution'''
+    """
+    Implementation of IInitializer interface using uniform distribution
+    """
     def __init__(self, min, max):
         self.min = min
         self.max = max
@@ -38,7 +44,9 @@ class Uniform(IInitializer):
 
         
 class ISynapse(metaclass=abc.ABCMeta):
-    '''Interface for neural network components'''
+    """
+    Interface for neural network components
+    """
     @classmethod
     def __subclasshook__(cls, subclass):
         return (hasattr(subclass, 'feedforward') and
@@ -57,7 +65,9 @@ class ISynapse(metaclass=abc.ABCMeta):
 
 
 class LinearSynapse(ISynapse):
-    '''Main neural network synapse which uses weights and biases'''
+    """
+    Main neural network synapse which uses weights and biases
+    """
     def __init__(self, weights, biases, stepSize):
         self.weights = weights
         self.biases = biases
@@ -79,13 +89,16 @@ class LinearSynapse(ISynapse):
 
 
 class IActivation(ISynapse):
-    '''Interface for activation function synapses'''
+    """
+    Interface for activation function synapses
+    """
     pass
 
 
-# Class for sigmoid implementation of activation function
 class Sigmoid(IActivation):
-    '''Non-linear synapse for neural network'''
+    """
+    Non-linear synapse for neural network
+    """
     def feedforward(self, x):
         self.z = 1 / (1 + np.exp(-x))
         return self.z
@@ -96,7 +109,9 @@ class Sigmoid(IActivation):
 
 
 class Identity(IActivation):
-    '''Trivial activation function'''
+    """
+    Trivial activation function
+    """
     def feedforward(self, x):
         return x
 
@@ -105,7 +120,9 @@ class Identity(IActivation):
 
 
 class ICostFunction(metaclass=abc.ABCMeta):
-    '''Interface for neural network cost function'''
+    """
+    Interface for neural network cost function
+    """
     @classmethod
     def __subclasshook__(cls, subclass):
         return (hasattr(subclass, 'cost') and
@@ -124,7 +141,9 @@ class ICostFunction(metaclass=abc.ABCMeta):
 
 
 class SquaredError(ICostFunction):
-    '''Squared error implementation of ICostFunction interface'''
+    """
+    Squared error implementation of ICostFunction interface
+    """
     def cost(self, actual, expected):
         return 0.5*np.sum((actual - expected)**2)
 
@@ -133,7 +152,9 @@ class SquaredError(ICostFunction):
 
 
 class NeuralNet:
-    '''Class for building, training, and using neural network models'''
+    """
+    Class for building, training, and using neural network models
+    """
     def __init__(
             self,
             neuralLayers: list[int],
