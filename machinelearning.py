@@ -8,9 +8,9 @@ class IInitializer(metaclass=abc.ABCMeta):
     """
     @classmethod
     def __subclasshook__(cls, subclass):
-        return (hasattr(subclass, 'initialize') and
-                callable(subclass.initialize) or
-                NotImplemented)
+        return (hasattr(subclass, 'initialize')
+                and callable(subclass.initialize)
+                or NotImplemented)
 
     @abc.abstractmethod
     def initialize(self, size):
@@ -49,11 +49,11 @@ class ISynapse(metaclass=abc.ABCMeta):
     """
     @classmethod
     def __subclasshook__(cls, subclass):
-        return (hasattr(subclass, 'feedforward') and
-                callable(subclass.feedforward) and
-                hasattr(subclass, 'backprop') and
-                callable(subclass.backprop) or
-                NotImplemented)
+        return (hasattr(subclass, 'feedforward')
+                and callable(subclass.feedforward)
+                and hasattr(subclass, 'backprop')
+                and callable(subclass.backprop)
+                or NotImplemented)
 
     @abc.abstractmethod
     def feedforward(self, x):
@@ -125,11 +125,11 @@ class ICostFunction(metaclass=abc.ABCMeta):
     """
     @classmethod
     def __subclasshook__(cls, subclass):
-        return (hasattr(subclass, 'cost') and
-                callable(subclass.cost) and
-                hasattr(subclass, 'derivative') and
-                callable(subclass.derivative) or
-                NotImplemented)
+        return (hasattr(subclass, 'cost')
+                and callable(subclass.cost)
+                and hasattr(subclass, 'derivative')
+                and callable(subclass.derivative)
+                or NotImplemented)
 
     @abc.abstractmethod
     def cost(self, actual, expected):
