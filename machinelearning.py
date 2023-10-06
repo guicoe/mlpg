@@ -174,7 +174,7 @@ class NeuralNet:
         self.synapses = []
         for n, m in zip(neuralLayers, neuralLayers[1:]):
             weights = initializer.initialize((m, n))
-            biases = 1*np.ones((m, 1))
+            biases = initializer.initialize((m, 1))
             self.synapses.append(LinearSynapse(weights, biases, stepSize))
             if activations:
                 self.synapses.append(activations.pop(0))
